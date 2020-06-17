@@ -1,0 +1,12 @@
+Material My Material : Common/MatDefs/Water/SimpleWater.j3md {
+     MaterialParameters {
+        waterDepth : 0.8
+        waterTransparency : 0.2
+        time : 0.0
+        waterColor : 0.6 0.6 1 0.6
+        texScale : 2.0
+     }
+    AdditionalRenderState {
+      Blend Off
+    }
+}
