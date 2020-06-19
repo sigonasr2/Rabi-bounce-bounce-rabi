@@ -1,6 +1,8 @@
 package mygame;
 
+import com.jme3.app.Application;
 import com.jme3.app.SimpleApplication;
+import com.jme3.app.state.BaseAppState;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
@@ -12,26 +14,35 @@ import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
+import com.jme3.system.AppSettings;
 import com.jme3.util.SkyFactory;
 import com.jme3.water.SimpleWaterProcessor;
 import com.jme3.water.WaterFilter;
+import mygame.appstate.RunLevel;
+import mygame.control.PlayableCharacter;
 
-/**
- * This is the Main Class of your Game. You should only do initialization here.
- * Move your Logic into AppStates or Controls
- * @author normenhansen
- */
 public class Main extends SimpleApplication {
+    
+    public static Main main;
 
     public static void main(String[] args) {
+        AppSettings settings = new AppSettings(true);
+        settings.setResolution(1600,900);
+        settings.setVSync(true);
+        settings.setFrameRate(120);
+        
         Main app = new Main();
+        app.setSettings(settings);
+        main = app;
         app.start();
     }
 
     @Override
     public void simpleInitApp() {
-        flyCam.setMoveSpeed(50);
-        CreateLevel();
+        flyCam.setEnabled(false);
+        //flyCam.setMoveSpeed(50);
+        BaseAppState level = new RunLevel();
+        stateManager.attach(level);
     }
 
     @Override
@@ -42,33 +53,5 @@ public class Main extends SimpleApplication {
     @Override
     public void simpleRender(RenderManager rm) {
         //TODO: add render code
-    }
-
-    private void CreateLevel() {
-        Node reflectedScene = new Node("Reflected Scene");
-        rootNode.attachChild(reflectedScene);
-        Spatial TestLevel = assetManager.loadModel("Scenes/TestLevel.j3o");
-        Node world = (Node)TestLevel;
-        System.out.println(world.getChildren());
-        reflectedScene.attachChild(TestLevel);
-        reflectedScene.attachChild(SkyFactory.createSky(assetManager,"Textures/Sky/Bright/BrightSky.dds",false));
-        
-        /*SimpleWaterProcessor waterProcessor = new SimpleWaterProcessor(assetManager);
-        waterProcessor.setReflectionScene(reflectedScene);
-        waterProcessor.setWaterColor(new ColorRGBA(0.0f,0.0f,0.0f,1.0f));
-        waterProcessor.setWaterDepth(2);
-        waterProcessor.setWaterTransparency(0.9f);
-        waterProcessor.setWaveSpeed(0.02f);
-        waterProcessor.setDistortionScale(0.3f);
-        waterProcessor.setDistortionMix(0.6f);
-        waterProcessor.
-        viewPort.addProcessor(waterProcessor);
-        world.getChild("WaterNode").setMaterial(waterProcessor.getMaterial());*/
-        FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
-        viewPort.addProcessor(fpp);
-        Vector3f lightDir = new Vector3f(-2.9f,-1.2f,-5.8f);
-        WaterFilter water = new WaterFilter(reflectedScene, lightDir);
-        fpp.addFilter(water);
-        //world.getChild("WaterNode").setQueueBucket(Bucket.Transparent);
     }
 }
