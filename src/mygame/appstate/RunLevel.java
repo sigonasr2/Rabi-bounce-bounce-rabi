@@ -30,6 +30,7 @@ import com.jme3.util.SkyFactory;
 import com.jme3.water.WaterFilter;
 import mygame.Main;
 import mygame.control.PlayableCharacter;
+import mygame.control.PlayablePhysicsCharacter;
 
 
 public class RunLevel extends BaseAppState 
@@ -72,7 +73,7 @@ public class RunLevel extends BaseAppState
         Node player =  (Node)assetManager.loadModel("Models/Oto/Oto.mesh.xml"); 
         Node playerNode = new Node();
         playerNode.attachChild(player);
-        playerNode.addControl(new PlayableCharacter(4f));
+        playerNode.addControl(new PlayableCharacter());
         
         
         ChaseCamera chaseCam = new ChaseCamera(this.app.getCamera(), player, inputManager);
@@ -84,16 +85,8 @@ public class RunLevel extends BaseAppState
         player.move(0,2.5f,0);
         player.setLocalScale(0.5f);
         
-        BetterCharacterControl playerControl = new BetterCharacterControl(1.5f,4f,10f);
-        playerNode.addControl(playerControl);
+        //BetterCharacterControl playerControl = new BetterCharacterControl(1.5f,4f,10f);
         playerNode.addControl(chaseCam);
-        playerControl.setJumpForce(new Vector3f(0,200f,0));
-        
-        bulletAppState.getPhysicsSpace().add(playerControl);
-        bulletAppState.getPhysicsSpace().addAll(playerNode);
-        
-        playerControl.setGravity(new Vector3f(0,-40f,0));
-        playerControl.warp(new Vector3f(0,10,10));
         
         //System.out.println(world.getChildren());
         reflectedScene.attachChild(world);

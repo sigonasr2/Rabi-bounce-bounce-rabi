@@ -19,7 +19,7 @@ import com.jme3.util.SkyFactory;
 import com.jme3.water.SimpleWaterProcessor;
 import com.jme3.water.WaterFilter;
 import mygame.appstate.RunLevel;
-import mygame.control.PlayableCharacter;
+import mygame.control.PlayablePhysicsCharacter;
 
 public class Main extends SimpleApplication {
     
