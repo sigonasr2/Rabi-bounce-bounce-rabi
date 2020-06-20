@@ -18,11 +18,16 @@ import com.jme3.input.InputManager;
 import com.jme3.input.KeyInput;
 import com.jme3.input.controls.KeyTrigger;
 import com.jme3.light.DirectionalLight;
+import com.jme3.material.Material;
+import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.post.FilterPostProcessor;
 import com.jme3.renderer.ViewPort;
+import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
+import com.jme3.scene.shape.Sphere;
+import static com.jme3.shader.Shader.ShaderType.Geometry;
 import static com.jme3.shader.VarType.Vector3;
 import com.jme3.shadow.DirectionalLightShadowFilter;
 import com.jme3.shadow.DirectionalLightShadowRenderer;
@@ -30,6 +35,7 @@ import com.jme3.util.SkyFactory;
 import com.jme3.water.WaterFilter;
 import mygame.Main;
 import static mygame.Main.main;
+import mygame.control.PhysicsControl;
 import mygame.control.PlayableCharacter;
 import mygame.control.PlayablePhysicsCharacter;
 
@@ -76,7 +82,19 @@ public class RunLevel extends BaseAppState
         playerNode.attachChild(player);
         playerNode.addControl(new PlayableCharacter());
         playerNode.setUserData("Level", world);
-        playerNode.setUserData("Terrain", main.SearchForTerrain(world));
+        
+        for (int i=0;i<500;i++) {
+            Node sphereNode = new Node();
+            Geometry sphere = new Geometry("PhysicsSphere",new Sphere((int)(Math.random()*10)+3,(int)(Math.random()*10)+3,3f));
+            Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+            mat.setColor("Color", ColorRGBA.randomColor());
+            sphere.setMaterial(mat);
+            sphere.setLocalTranslation(0.01f,1.5f,0.01f);
+            sphereNode.attachChild(sphere);
+            sphereNode.addControl(new PhysicsControl(world,0.0f,-0.2f,3f));
+            sphereNode.setLocalTranslation(0.01f+75f*(float)Math.random()-75f*(float)Math.random(),25f+300f*(float)Math.random(),0.01f+75f*(float)Math.random()-75f*(float)Math.random());
+            reflectedScene.attachChild(sphereNode);
+        }
         
         ChaseCamera chaseCam = new ChaseCamera(this.app.getCamera(), player, inputManager);
         
