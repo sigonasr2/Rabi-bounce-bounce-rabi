@@ -29,6 +29,7 @@ import com.jme3.shadow.DirectionalLightShadowRenderer;
 import com.jme3.util.SkyFactory;
 import com.jme3.water.WaterFilter;
 import mygame.Main;
+import static mygame.Main.main;
 import mygame.control.PlayableCharacter;
 import mygame.control.PlayablePhysicsCharacter;
 
@@ -58,39 +59,45 @@ public class RunLevel extends BaseAppState
         this.viewPort     = this.app.getViewPort();
         this.physics      = this.stateManager.getState(BulletAppState.class);
         
-        BulletAppState bulletAppState = new BulletAppState();
-        this.stateManager.attach(bulletAppState);
+        //BulletAppState bulletAppState = new BulletAppState();
+        //this.stateManager.attach(bulletAppState);
         
         Node reflectedScene = new Node("Reflected Scene");
         rootNode.attachChild(reflectedScene);
         Spatial TestLevel = assetManager.loadModel("Scenes/TestLevel.j3o");
         Node world = (Node)TestLevel;
-        TestLevel.addControl(new RigidBodyControl(0));
-        bulletAppState.getPhysicsSpace().addAll(TestLevel);
+        //TestLevel.addControl(new RigidBodyControl(0));
+        //bulletAppState.getPhysicsSpace().addAll(TestLevel);
         //System.out.println(world.getLocalLightList().size());
-        DirectionalLight sceneLight = (DirectionalLight)world.getLocalLightList().get(0);
+        //DirectionalLight sceneLight = (DirectionalLight)world.getLocalLightList().get(0);
         
         Node player =  (Node)assetManager.loadModel("Models/Oto/Oto.mesh.xml"); 
         Node playerNode = new Node();
         playerNode.attachChild(player);
         playerNode.addControl(new PlayableCharacter());
-        
+        playerNode.setUserData("Level", world);
+        playerNode.setUserData("Terrain", main.SearchForTerrain(world));
         
         ChaseCamera chaseCam = new ChaseCamera(this.app.getCamera(), player, inputManager);
         
         
         //channel.setLoopMode(LoopMode.Cycle);
-        world.attachChild(playerNode);
+        //world.attachChild(playerNode);
         
         player.move(0,2.5f,0);
         player.setLocalScale(0.5f);
         
         //BetterCharacterControl playerControl = new BetterCharacterControl(1.5f,4f,10f);
         playerNode.addControl(chaseCam);
+        playerNode.move(0.01f,3f,0.01f);
+        
+        DirectionalLight sceneLight = new DirectionalLight(new Vector3f(-0.57735026f, -0.57735026f, -0.57735026f));
         
         //System.out.println(world.getChildren());
         reflectedScene.attachChild(world);
         reflectedScene.attachChild(TestLevel);
+        reflectedScene.attachChild(playerNode);
+        reflectedScene.addLight(sceneLight);
         reflectedScene.attachChild(SkyFactory.createSky(assetManager,"Textures/Sky/Bright/BrightSky.dds",false));
         
         FilterPostProcessor fpp = new FilterPostProcessor(assetManager);

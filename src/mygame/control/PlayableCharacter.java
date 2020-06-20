@@ -4,17 +4,15 @@ import com.jme3.animation.AnimChannel;
 import com.jme3.animation.AnimControl;
 import com.jme3.animation.AnimEventListener;
 import com.jme3.animation.LoopMode;
-import com.jme3.bullet.control.BetterCharacterControl;
 import com.jme3.collision.CollisionResults;
-import template.*;
 import com.jme3.export.JmeExporter;
 import com.jme3.export.JmeImporter;
 import com.jme3.export.Savable;
-import com.jme3.input.ChaseCamera;
 import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.AnalogListener;
 import com.jme3.input.controls.KeyTrigger;
+import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Ray;
 import com.jme3.math.Vector3f;
@@ -26,14 +24,23 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
 import com.jme3.scene.control.Control;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import mygame.Main;
 import static mygame.Main.main;
 
 public class PlayableCharacter extends AbstractControl implements Savable, Cloneable, ActionListener, AnalogListener, AnimEventListener {
     
-    float speed = 1000.0f;
+    float speed = 10.0f;
+    float jumpSpd = 0.1f;
+    float vspd = 0.0f;
+    float gravity = -0.25f;
+    
+    float walkOffTime = 0.25f; //How long you can jump after becoming airborne.
+    float airTime = 0.0f; //Amount of time in air.
+    
+    float rotation_time = 3f;
+    float current_time = 0.0f;
+    Spatial standingOn = null;
+    
+    Quaternion prevRot;
     
     boolean walkingForward = false;
     boolean walkingBackward = false;
@@ -55,7 +62,7 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
     public void setSpatial(Spatial spatial) {
         super.setSpatial(spatial);
         //control = spatial.getControl(BetterCharacterControl.class);
-        
+        Node myNode = (Node)spatial;
         
         control = ((Node)spatial).getChild(0).getControl(AnimControl.class);
         control.addListener(this);
@@ -75,6 +82,7 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
         main.getInputManager().addListener(this, "StrafeRight");
         main.getInputManager().addListener(this, "StrafeLeft");
         main.getInputManager().addListener(this, "Jump");
+        
     }
 
     /** Implement your spatial's behaviour here.
@@ -84,6 +92,7 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
       */
     @Override
     protected void controlUpdate(float tpf){
+        //System.out.println(((Geometry)(((Node)((Node)spatial).getChild(0)).getChild(0))).getName()); //Possibility of using geometry node names.
         if (moving) {
             if (!channel.getAnimationName().equalsIgnoreCase("Walk")) {   
                 channel.setAnim("Walk");
@@ -113,14 +122,37 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
                 walkDirection.addLocal(camDir.negate());
                 moving=true;
             }  
-
+            
             if (moving) {
-                walkDirection.multLocal(speed).multLocal(tpf);
+                SmoothMoveWalk(walkDirection, tpf);
             } else {
                 channel.setAnim("stand");
                 channel.setLoopMode(LoopMode.DontLoop);
             }
         }
+        //isOnGround();
+        if (!isOnGround()) {
+            vspd+=gravity*tpf;
+            airTime+=tpf;
+        } else {
+            vspd=0;
+            airTime=0;
+        }
+        spatial.move(0,vspd,0);
+    }
+
+    private Node GetLevel() {
+        return (Node)(spatial.getUserData("Level"));
+    }
+
+    private void SmoothMoveWalk(Vector3f walkDirection, float tpf) {
+        walkDirection.multLocal(speed).multLocal(tpf);
+        spatial.move(walkDirection);
+        Quaternion q = new Quaternion().fromAngleAxis((float)FastMath.atan2(walkDirection.x,walkDirection.z),Vector3f.UNIT_Y);
+        Quaternion q2 = spatial.getLocalRotation();
+        q2.slerp(q,Math.min(current_time/rotation_time,1));
+        spatial.setLocalRotation(q2);
+        current_time+=tpf;
     }
 
     @Override
@@ -150,18 +182,26 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
     public void onAction(String name, boolean isPressed, float tpf) {
         switch (name) {
             case "StrafeLeft":{
+                current_time = 0.0f;
+                prevRot = spatial.getLocalRotation();
                 strafingLeft = isPressed;
                 moving = true;
             }break;
             case "StrafeRight":{
+                current_time = 0.0f;
+                prevRot = spatial.getLocalRotation();
                 strafingRight = isPressed;
                 moving = true;
             }break;
             case "WalkBackward":{
+                current_time = 0.0f;
+                prevRot = spatial.getLocalRotation();
                 walkingBackward = isPressed;
                 moving = true;
             }break;
             case "WalkForward":{
+                current_time = 0.0f;
+                prevRot = spatial.getLocalRotation();
                 walkingForward = isPressed;
                 moving = true;
             }break;
@@ -172,6 +212,9 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
     public void onAnalog(String name, float value, float tpf) {
         switch (name) {
             case "Jump":{
+                if (isOnGround() || airTime<=walkOffTime) {
+                    vspd=jumpSpd;
+                }
             }break;
         }
     }
@@ -183,5 +226,43 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
 
     @Override
     public void onAnimChange(AnimControl control, AnimChannel channel, String animName) {
+    }
+
+    private boolean isOnGround() {
+        if (vspd>0) {
+            System.out.println(vspd);
+            return false;
+        }
+        CollisionResults results = new CollisionResults();
+        Ray r = new Ray(spatial.getLocalTranslation().add(0,2.5f-vspd,0),Vector3f.UNIT_Y.negate());
+        GetLevel().updateGeometricState();
+        GetLevel().collideWith(r, results);
+        System.out.println("Collisions("+results.size()+"):");
+        for (int i=0;i<results.size();i++) {
+            System.out.println("Collision with "+results.getCollision(i).getGeometry().getName());
+        }
+        if (results.size()>0) {
+            //System.out.println(results.getCollision(0));
+            if (results.getClosestCollision().getContactPoint().x!=0 ||
+                    results.getClosestCollision().getContactPoint().y!=0 ||
+                    results.getClosestCollision().getContactPoint().z!=0) {
+                System.out.println(results.getClosestCollision());
+                if (results.getClosestCollision().getDistance()<=2.6-vspd) {
+                    spatial.setLocalTranslation(results.getClosestCollision().getContactPoint());
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                vspd=jumpSpd; //???Undefined behavior.
+            }
+        }
+        /*if (results.size()>0) {
+            System.out.println("Distance: "+results.getClosestCollision().getDistance());
+            //if (results.getClosestCollision().getDistance()<=5.0f) {
+                
+            //}
+        }*/
+        return false;
     }
 }

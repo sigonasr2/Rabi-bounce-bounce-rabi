@@ -15,6 +15,7 @@ import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.system.AppSettings;
+import com.jme3.terrain.geomipmap.TerrainQuad;
 import com.jme3.util.SkyFactory;
 import com.jme3.water.SimpleWaterProcessor;
 import com.jme3.water.WaterFilter;
@@ -53,5 +54,17 @@ public class Main extends SimpleApplication {
     @Override
     public void simpleRender(RenderManager rm) {
         //TODO: add render code
+    }
+    
+    public static TerrainQuad SearchForTerrain(Node node) {
+        for (Spatial s : node.getChildren()) {
+            if (s instanceof TerrainQuad) {
+                return (TerrainQuad)s;
+            } else {
+                Node n = (Node)s;
+                return SearchForTerrain(n);
+            }
+        }
+        return null;
     }
 }
