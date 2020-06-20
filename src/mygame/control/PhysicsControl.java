@@ -9,6 +9,8 @@ import com.jme3.math.Ray;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
+import com.jme3.renderer.queue.RenderQueue;
+import com.jme3.renderer.queue.RenderQueue.ShadowMode;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
@@ -42,7 +44,7 @@ public class PhysicsControl extends AbstractControl implements Savable, Cloneabl
     @Override
     public void setSpatial(Spatial spatial) {
         super.setSpatial(spatial);
-        
+        spatial.setShadowMode(ShadowMode.CastAndReceive);
         spatial.setUserData("Level", levelData);
     }
 
@@ -111,7 +113,7 @@ public class PhysicsControl extends AbstractControl implements Savable, Cloneabl
     
     boolean isOnGround() {
         if (vspd>0) {
-            System.out.println(vspd);
+            //System.out.println(vspd);
             return false;
         }
         CollisionResults results = new CollisionResults();

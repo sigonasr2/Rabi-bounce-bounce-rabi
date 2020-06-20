@@ -22,7 +22,10 @@ import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.post.FilterPostProcessor;
+import com.jme3.post.ssao.SSAOFilter;
 import com.jme3.renderer.ViewPort;
+import com.jme3.renderer.queue.RenderQueue;
+import com.jme3.renderer.queue.RenderQueue.ShadowMode;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
@@ -65,11 +68,16 @@ public class RunLevel extends BaseAppState
         this.viewPort     = this.app.getViewPort();
         this.physics      = this.stateManager.getState(BulletAppState.class);
         
+        //rootNode.setShadowMode(ShadowMode.CastAndReceive);
+        
         //BulletAppState bulletAppState = new BulletAppState();
         //this.stateManager.attach(bulletAppState);
         
+        DirectionalLight sceneLight = new DirectionalLight(new Vector3f(-0.57735026f, -0.57735026f, -0.57735026f));
+        
         Node reflectedScene = new Node("Reflected Scene");
         rootNode.attachChild(reflectedScene);
+        //rootNode.addLight(sceneLight);
         Spatial TestLevel = assetManager.loadModel("Scenes/TestLevel.j3o");
         Node world = (Node)TestLevel;
         //TestLevel.addControl(new RigidBodyControl(0));
@@ -83,10 +91,10 @@ public class RunLevel extends BaseAppState
         playerNode.addControl(new PlayableCharacter());
         playerNode.setUserData("Level", world);
         
-        for (int i=0;i<500;i++) {
+        for (int i=0;i<100;i++) {
             Node sphereNode = new Node();
             Geometry sphere = new Geometry("PhysicsSphere",new Sphere((int)(Math.random()*10)+3,(int)(Math.random()*10)+3,3f));
-            Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+            Material mat = new Material(assetManager, "Materials/newMatDef.j3md");
             mat.setColor("Color", ColorRGBA.randomColor());
             sphere.setMaterial(mat);
             sphere.setLocalTranslation(0.01f,1.5f,0.01f);
@@ -97,8 +105,12 @@ public class RunLevel extends BaseAppState
         }
         
         ChaseCamera chaseCam = new ChaseCamera(this.app.getCamera(), player, inputManager);
-        
-        
+        chaseCam.setLookAtOffset(new Vector3f(0,2.5f,0));
+        //this.app.getCamera().setFrustumPerspective(this.app.getCamera().getFr, aspect, near, far);
+        //this.app.getCamera().setFrustumPerspective(90, 16f/9, 0, 2000f);
+        //float fov = 50;
+        //float aspect = (float)this.app.getCamera().getWidth() / (float)this.app.getCamera().getHeight();
+        //this.app.getCamera().setFrustumPerspective(fov, aspect, this.app.getCamera().getFrustumNear(), this.app.getCamera().getFrustumFar());
         //channel.setLoopMode(LoopMode.Cycle);
         //world.attachChild(playerNode);
         
@@ -109,13 +121,13 @@ public class RunLevel extends BaseAppState
         playerNode.addControl(chaseCam);
         playerNode.move(0.01f,3f,0.01f);
         
-        DirectionalLight sceneLight = new DirectionalLight(new Vector3f(-0.57735026f, -0.57735026f, -0.57735026f));
-        
         //System.out.println(world.getChildren());
+        //.addLight(sceneLight);
+        //world.addLight(sceneLight);
+        reflectedScene.addLight(sceneLight);
         reflectedScene.attachChild(world);
         reflectedScene.attachChild(TestLevel);
         reflectedScene.attachChild(playerNode);
-        reflectedScene.addLight(sceneLight);
         reflectedScene.attachChild(SkyFactory.createSky(assetManager,"Textures/Sky/Bright/BrightSky.dds",false));
         
         FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
@@ -124,17 +136,22 @@ public class RunLevel extends BaseAppState
         WaterFilter water = new WaterFilter(reflectedScene, lightDir);
         water.setWaterHeight(-1.5f);
         fpp.addFilter(water);
+        final int SHADOWMAP_SIZE=4096;
         
-        final int SHADOWMAP_SIZE=1024;
-        DirectionalLightShadowRenderer dlsr = new DirectionalLightShadowRenderer(assetManager, SHADOWMAP_SIZE, 3);
+        /*DirectionalLightShadowRenderer dlsr = new DirectionalLightShadowRenderer(assetManager, SHADOWMAP_SIZE, 4);
         dlsr.setLight(sceneLight);
-        viewPort.addProcessor(dlsr);
+        viewPort.addProcessor(dlsr);*/
 
-        DirectionalLightShadowFilter dlsf = new DirectionalLightShadowFilter(assetManager, SHADOWMAP_SIZE, 3);
+        DirectionalLightShadowFilter dlsf = new DirectionalLightShadowFilter(assetManager, SHADOWMAP_SIZE, 4);
         dlsf.setLight(sceneLight);
         dlsf.setEnabled(true);
         fpp.addFilter(dlsf);
         viewPort.addProcessor(fpp);
+        
+        /*
+        SSAOFilter ssaoFilter = new SSAOFilter(12.94f, 43.92f, 0.33f, 0.61f);
+        fpp.addFilter(ssaoFilter);
+        viewPort.addProcessor(fpp);*/
         
     }
 
