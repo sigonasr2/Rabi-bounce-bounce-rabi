@@ -1,5 +1,6 @@
 package mygame.control;
 
+import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
 import template.*;
 import com.jme3.export.JmeExporter;
@@ -16,6 +17,9 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
 import com.jme3.scene.control.Control;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import static mygame.appstate.RunLevel.world;
 
 public class PhysicsControl extends AbstractControl implements Savable, Cloneable {
     
@@ -25,13 +29,10 @@ public class PhysicsControl extends AbstractControl implements Savable, Cloneabl
     
     float modelHeight = 2.5f;
     
-    Node levelData;
-    
     float walkOffTime = 0.25f; //How long you can jump after becoming airborne.
     float airTime = 0.0f; //Amount of time in air.
 
-    public PhysicsControl(Node levelData, float jumpSpd, float gravity, float modelHeight){
-        this.levelData=levelData;
+    public PhysicsControl(float jumpSpd, float gravity, float modelHeight){
         this.jumpSpd=jumpSpd;
         this.gravity=gravity;
         this.modelHeight=modelHeight;
@@ -45,7 +46,7 @@ public class PhysicsControl extends AbstractControl implements Savable, Cloneabl
     public void setSpatial(Spatial spatial) {
         super.setSpatial(spatial);
         spatial.setShadowMode(ShadowMode.CastAndReceive);
-        spatial.setUserData("Level", levelData);
+        //spatial.setUserData("Level", levelData);
     }
 
     /** Implement your spatial's behaviour here.
@@ -67,7 +68,7 @@ public class PhysicsControl extends AbstractControl implements Savable, Cloneabl
 
     @Override
     public Control cloneForSpatial(Spatial spatial){
-        final PhysicsControl control = new PhysicsControl((Node)(levelData.clone()),jumpSpd,gravity,modelHeight);
+        final PhysicsControl control = new PhysicsControl(jumpSpd,gravity,modelHeight);
         /* Optional: use setters to copy userdata into the cloned control */
         // control.setIndex(i); // example
         control.setSpatial(spatial);
@@ -117,17 +118,25 @@ public class PhysicsControl extends AbstractControl implements Savable, Cloneabl
             return false;
         }
         CollisionResults results = new CollisionResults();
+        CollisionResults newResults = new CollisionResults();
         Ray r = new Ray(spatial.getLocalTranslation().add(0,(modelHeight/2)-vspd,0),Vector3f.UNIT_Y.negate());
-        GetLevel().updateGeometricState();
-        GetLevel().collideWith(r, results);
-        if (results.size()>0) {
-            //System.out.println(results.getCollision(0));
-            if (results.getClosestCollision().getContactPoint().x!=0 ||
-                    results.getClosestCollision().getContactPoint().y!=0 ||
-                    results.getClosestCollision().getContactPoint().z!=0) {
-                //System.out.println(results.getClosestCollision());
-                if (results.getClosestCollision().getDistance()<=(modelHeight/2)+0.1-vspd) {
-                    spatial.setLocalTranslation(results.getClosestCollision().getContactPoint());
+        //world.updateGeometricState();
+        world.collideWith(r, results);
+        //Get closest collision that doesn't include myself.
+        List<CollisionResult> collisions = new ArrayList<>();
+        for (int i=0;i<results.size();i++) {
+           if (results.getCollision(i).getGeometry()!=spatial) {
+            newResults.addCollision(results.getCollision(i));
+           }
+        }
+        if (newResults.size()>0) {
+            //System.out.println(newResults.getCollision(0));
+            if (newResults.getClosestCollision().getContactPoint().x!=0 ||
+                    newResults.getClosestCollision().getContactPoint().y!=0 ||
+                    newResults.getClosestCollision().getContactPoint().z!=0) {
+                //System.out.println(newResults.getClosestCollision());
+                if (newResults.getClosestCollision().getDistance()<=(modelHeight/2)+0.1-vspd) {
+                    spatial.setLocalTranslation(newResults.getClosestCollision().getContactPoint());
                     return true;
                 } else {
                     return false;

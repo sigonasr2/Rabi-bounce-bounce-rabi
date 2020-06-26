@@ -16,6 +16,7 @@ import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Ray;
 import com.jme3.math.Vector3f;
+import com.jme3.network.Message;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
 import com.jme3.scene.Geometry;
@@ -25,6 +26,9 @@ import com.jme3.scene.control.AbstractControl;
 import com.jme3.scene.control.Control;
 import java.io.IOException;
 import static mygame.Main.main;
+import mygame.server.ServerMain.PlayerActionMessage;
+import mygame.server.ServerMain.PlayerPositionMessage;
+import mygame.server.ServerMain.ServerMessage;
 
 public class PlayableCharacter extends AbstractControl implements Savable, Cloneable, ActionListener, AnalogListener, AnimEventListener {
     
@@ -45,9 +49,9 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
     AnimControl control;
     
     PhysicsControl physics;
-
-    public PlayableCharacter() {
-    } // empty serialization constructor
+    Vector3f walkDirection;
+            
+    // empty serialization constructor
 
     /** This method is called when the control is added to the spatial,
       * and when the control is removed from the spatial (setting a null value).
@@ -60,7 +64,6 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
         Node myNode = (Node)spatial;
         
         physics = new PhysicsControl(
-                (Node)spatial.getUserData("Level"),
                 0.1f,
                 -0.25f,
                 5f
@@ -85,7 +88,6 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
         main.getInputManager().addListener(this, "StrafeRight");
         main.getInputManager().addListener(this, "StrafeLeft");
         main.getInputManager().addListener(this, "Jump");
-        
     }
 
     /** Implement your spatial's behaviour here.
@@ -96,38 +98,29 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
     @Override
     protected void controlUpdate(float tpf){
         //System.out.println(((Geometry)(((Node)((Node)spatial).getChild(0)).getChild(0))).getName()); //Possibility of using geometry node names.
+        /*if (this instanceof NetworkPlayableCharacter) {
+            System.out.println("1:"+getWalkDirection()+"Moving:"+moving+"/"+strafingLeft+"/"+strafingRight+"/"+walkingBackward+"/"+walkingForward);
+        }*/
         if (moving) {
             if (!channel.getAnimationName().equalsIgnoreCase("Walk")) {   
                 channel.setAnim("Walk");
                 channel.setLoopMode(LoopMode.Loop);
             }
-            Vector3f camDir = main.getCamera().getDirection(); camDir.y=0; camDir.normalizeLocal();
-            Vector3f camLeftDir = main.getCamera().getLeft(); camLeftDir.y=0; camLeftDir.normalizeLocal();
-
-            Vector3f walkDirection = new Vector3f(0,0,0);
-            //spatial.setLocalRotation(new Quaternion().fromAngleAxis(spatial.getControl(ChaseCamera.class).getHorizontalRotation(),Vector3f.UNIT_Y));
-            //System.out.println(camDir);
-            moving=false;
-            if (strafingLeft) {
-                walkDirection.addLocal(camLeftDir);
-                moving=true;
-            }
-            if (strafingRight) {
-                walkDirection.addLocal(camLeftDir.negate());
-                moving=true;
-            }
-
-            if (walkingForward) {
-                walkDirection.addLocal(camDir);
-                moving=true;
-            }  
-            if (walkingBackward) {
-                walkDirection.addLocal(camDir.negate());
-                moving=true;
-            }  
             
+            moving=false;
+            
+            if (this instanceof NetworkPlayableCharacter) {
+                walkDirection = getWalkDirection((Vector3f)spatial.getUserData("lastCamDir"),(Vector3f)spatial.getUserData("lastCamLeftDir"));
+            } else {
+                walkDirection = getWalkDirection(main.getCamera().getDirection(),main.getCamera().getLeft());
+            }
+            /*if (this instanceof NetworkPlayableCharacter) {
+                System.out.println(" 2:"+getWalkDirection()+"Moving:"+moving+"/"+strafingLeft+"/"+strafingRight+"/"+walkingBackward+"/"+walkingForward);
+            }*/
             if (moving) {
                 SmoothMoveWalk(walkDirection, tpf);
+                //Message msg = new PlayerPositionMessage(spatial.getLocalTranslation());
+                //main.client.send(msg);
             } else {
                 channel.setAnim("stand");
                 channel.setLoopMode(LoopMode.DontLoop);
@@ -139,6 +132,9 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
     private void SmoothMoveWalk(Vector3f walkDirection, float tpf) {
         walkDirection.multLocal(speed).multLocal(tpf);
         spatial.move(walkDirection);
+        /*if (this instanceof NetworkPlayableCharacter) {
+            System.out.println("Moving. My speed is "+speed+" walkDir is "+walkDirection);
+        }*/
         Quaternion q = new Quaternion().fromAngleAxis((float)FastMath.atan2(walkDirection.x,walkDirection.z),Vector3f.UNIT_Y);
         Quaternion q2 = spatial.getLocalRotation();
         q2.slerp(q,Math.min(current_time/rotation_time,1));
@@ -177,24 +173,40 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
                 prevRot = spatial.getLocalRotation();
                 strafingLeft = isPressed;
                 moving = true;
+                if (!(this instanceof NetworkPlayableCharacter)) { //Only send if this is the source client.
+                    PlayerActionMessage action = new PlayerActionMessage(name,Boolean.toString(isPressed),main.client.getId(),spatial.getLocalTranslation(),spatial.getLocalRotation(),main.getCamera().getDirection(),main.getCamera().getLeft());
+                    main.client.send(action);
+                }
             }break;
             case "StrafeRight":{
                 current_time = 0.0f;
                 prevRot = spatial.getLocalRotation();
                 strafingRight = isPressed;
                 moving = true;
+                if (!(this instanceof NetworkPlayableCharacter)) { //Only send if this is the source client.
+                    PlayerActionMessage action = new PlayerActionMessage(name,Boolean.toString(isPressed),main.client.getId(),spatial.getLocalTranslation(),spatial.getLocalRotation(),main.getCamera().getDirection(),main.getCamera().getLeft());
+                    main.client.send(action);
+                }
             }break;
             case "WalkBackward":{
                 current_time = 0.0f;
-                prevRot = spatial.getLocalRotation();
+                prevRot = spatial.getLocalRotation(); 
                 walkingBackward = isPressed;
                 moving = true;
+                if (!(this instanceof NetworkPlayableCharacter)) { //Only send if this is the source client.
+                    PlayerActionMessage action = new PlayerActionMessage(name,Boolean.toString(isPressed),main.client.getId(),spatial.getLocalTranslation(),spatial.getLocalRotation(),main.getCamera().getDirection(),main.getCamera().getLeft());
+                    main.client.send(action);
+                }
             }break;
             case "WalkForward":{
                 current_time = 0.0f;
                 prevRot = spatial.getLocalRotation();
                 walkingForward = isPressed;
                 moving = true;
+                if (!(this instanceof NetworkPlayableCharacter)) { //Only send if this is the source client.
+                    PlayerActionMessage action = new PlayerActionMessage(name,Boolean.toString(isPressed),main.client.getId(),spatial.getLocalTranslation(),spatial.getLocalRotation(),main.getCamera().getDirection(),main.getCamera().getLeft());
+                    main.client.send(action);
+                }
             }break;
         }
     }
@@ -205,6 +217,10 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
             case "Jump":{
                 if (isOnGround() || physics.airTime<=physics.walkOffTime) {
                     physics.jump();
+                    if (!(this instanceof NetworkPlayableCharacter)) { //Only send if this is the source client.
+                        PlayerActionMessage action = new PlayerActionMessage(name,"",main.client.getId(),spatial.getLocalTranslation(),spatial.getLocalRotation(),main.getCamera().getDirection(),main.getCamera().getLeft());
+                        main.client.send(action);
+                    }
                 }
             }break;
         }
@@ -221,5 +237,31 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
 
     @Override
     public void onAnimChange(AnimControl control, AnimChannel channel, String animName) {
+    }
+
+    public Vector3f getWalkDirection(Vector3f camDir, Vector3f camLeftDir) {
+        camDir.y=0; camDir.normalizeLocal();
+        camLeftDir.y=0; camLeftDir.normalizeLocal();
+
+        Vector3f walkDirection = new Vector3f(0,0,0);
+        
+        if (strafingLeft) {
+            walkDirection.addLocal(camLeftDir);
+            moving=true;
+        }
+        if (strafingRight) {
+            walkDirection.addLocal(camLeftDir.negate());
+            moving=true;
+        }
+
+        if (walkingForward) {
+            walkDirection.addLocal(camDir);
+            moving=true;
+        }  
+        if (walkingBackward) {
+            walkDirection.addLocal(camDir.negate());
+            moving=true;
+        }  
+        return walkDirection;
     }
 }
