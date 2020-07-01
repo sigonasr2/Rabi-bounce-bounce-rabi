@@ -34,7 +34,6 @@ public class ServerMain extends SimpleApplication{
     int clientIDMax = 0;
     public static HashMap<String,Instance> instances = new HashMap<>();
     public static HashMap<Integer,Instance> players = new HashMap<>(); //The last instance location this player was seen in.
-    public static int INSTANCE_UNIQUE_ID = 0;
     
     ServerMain() {
         try {
@@ -52,9 +51,7 @@ public class ServerMain extends SimpleApplication{
                     if (players.containsKey(conn.getId())) {
                         Instance i = players.get(conn.getId());
                         i.removePlayer(conn);
-                        server.broadcast(Filters.in(i.clients),new PlayerLeaveMessage(i.levelName,conn.getId()));
                     }
-                    players.remove(conn.getId());
                 }
             });
             
@@ -64,7 +61,6 @@ public class ServerMain extends SimpleApplication{
             Serializer.registerClass(JoinMessage.class);
             Serializer.registerClass(SyncLevelMessage.class);
             Serializer.registerClass(Entity.class);
-            Serializer.registerClass(PlayerLeaveMessage.class);
             //Serializer.registerClass(PlayerJoinMessage.class);
             Serializer.registerClass(PlayerActionMessage.class);
             
@@ -75,7 +71,6 @@ public class ServerMain extends SimpleApplication{
             server.addMessageListener(new ServerListener(), SyncLevelMessage.class);
             //server.addMessageListener(new ServerListener(), PlayerJoinMessage.class);
             server.addMessageListener(new ServerListener(), PlayerActionMessage.class);
-            server.addMessageListener(new ServerListener(), PlayerLeaveMessage.class);
             
             server.start();
         } catch (IOException ex) {
@@ -128,11 +123,8 @@ public class ServerMain extends SimpleApplication{
           } else
           if (message instanceof PlayerPositionMessage) {
             System.out.println("Position update for client "+source.getId()+". Broadcasting to others.");
-            if (players.containsKey(source.getId())) {
-                Instance i = players.get(source.getId());
-                SendToAllButMe(i, source, message);
-            }
-            //server.broadcast(Filters.in(source), new ServerMessage("Sent an update to other clients!"));
+            server.broadcast(Filters.notEqualTo(source), message);
+            server.broadcast(Filters.in(source), new ServerMessage("Sent an update to other clients!"));
           } else 
           if (message instanceof JoinMessage) {
               JoinMessage msg = (JoinMessage)message;
@@ -147,7 +139,6 @@ public class ServerMain extends SimpleApplication{
                 instance = new Instance(msg.levelName);
                 System.out.println("Instance "+msg.levelName+" does not exist. Creating... "+instance);
                 CreateTestObj(instance);
-                instance.INSTANCE_ID=INSTANCE_UNIQUE_ID++;
                 System.out.println(instance);
                 instances.put(msg.levelName, instance);
             }
@@ -155,29 +146,21 @@ public class ServerMain extends SimpleApplication{
             instance.addPlayer(source);
             SyncLevelMessage sync = new SyncLevelMessage(instance.getEntities(),instance.getPlayers(),instance.getPlayerPositions());
             server.broadcast(Filters.in(source),sync);
-            SendToAllButMe(instance, source, message);
+            server.broadcast(Filters.notEqualTo(source),message);
           } else
           if (message instanceof PlayerActionMessage) {
             System.out.println("Received player action message: "+message);
+            server.broadcast(Filters.notEqualTo(source), message);
             PlayerActionMessage msg = (PlayerActionMessage)message;
             if (players.containsKey(source.getId())) {
                 Instance i = players.get(source.getId());
                 i.updatePosition(source.getId(),msg.getPosition());
-                SendToAllButMe(i, source, message);
             }
           } /*else
           if (message instanceof PlayerJoinMessage) {
             System.out.println("Player has joined "+message);
             server.broadcast(Filters.notEqualTo(source), message);
           }*/
-        }
-
-        private void SendToAllButMe(Instance i, HostedConnection source, Message message) {
-            for (HostedConnection conn : i.clients) {
-             if (conn!=source) {
-              server.broadcast(Filters.in(conn),message);
-             }
-            }
         }
       }
     
@@ -262,28 +245,6 @@ public class ServerMain extends SimpleApplication{
         
         public Entity getEntity() {
             return ent;
-        }
-    }
-    @Serializable
-    public static class PlayerLeaveMessage extends AbstractMessage {
-        String levelName;
-        int id;
-
-        public PlayerLeaveMessage() {
-        }
-
-        public PlayerLeaveMessage(String levelName, int id) {
-            this.levelName = levelName;
-            this.id=id;
-        }
-
-        @Override
-        public String toString() {
-            return "Client ID "+id+" left. In Instance "+levelName.toString();
-        }
-        
-        public int getId() {
-            return id;
         }
     }
     @Serializable
