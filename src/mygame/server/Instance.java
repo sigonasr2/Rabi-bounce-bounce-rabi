@@ -27,6 +27,7 @@ public class Instance {
     protected HashMap<Integer,Vector3f> lastKnownPositions = new HashMap<>();
     protected List<Entity> entities = new ArrayList<>(); //Entity data specific to this instance.
     List<Integer> nullEntities = new ArrayList<>(); //A list of "null" entities. When adding new entities, these slots will be consumed first.
+    public int INSTANCE_ID = -1;
     Instance(String levelName) {
         this.levelName = levelName;
     }
