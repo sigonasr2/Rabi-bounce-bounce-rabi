@@ -1,0 +1,9 @@
+Material PinkHair : Common/MatDefs/Light/Lighting.j3md {
+     MaterialParameters {
+        Diffuse : 1.0 0.2 1.0 1.0
+        VertexLighting : false
+        UseMaterialColors : true
+     }
+    AdditionalRenderState {
+    }
+}

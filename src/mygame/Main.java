@@ -23,6 +23,7 @@ import mygame.server.ServerMain;
 import mygame.server.ServerMain.EntityMessage;
 import mygame.server.ServerMain.JoinMessage;
 import mygame.server.ServerMain.PlayerActionMessage;
+import mygame.server.ServerMain.PlayerLeaveMessage;
 import mygame.server.ServerMain.PlayerPositionMessage;
 import mygame.server.ServerMain.ServerMessage;
 import mygame.server.ServerMain.SyncLevelMessage;
@@ -44,6 +45,7 @@ public class Main extends SimpleApplication implements ClientStateListener{
             client.addMessageListener(new ClientListener(), JoinMessage.class);
             //client.addMessageListener(new ClientListener(), PlayerJoinMessage.class);
             client.addMessageListener(new ClientListener(), PlayerActionMessage.class);
+            client.addMessageListener(new ClientListener(), PlayerLeaveMessage.class);
             client.addClientStateListener(this);
             
             client.start();   
@@ -68,8 +70,9 @@ public class Main extends SimpleApplication implements ClientStateListener{
     public void simpleInitApp() {
         flyCam.setEnabled(false);
         //flyCam.setMoveSpeed(50);
-        level = new RunLevel("TestLevel");
+        level = new RunLevel("TestLevel2");
         stateManager.attach(level);
+        //stateManager.detach(level);
     }
 
     @Override
@@ -110,6 +113,9 @@ public class Main extends SimpleApplication implements ClientStateListener{
           } else
           if (message instanceof JoinMessage) {
             level.getPlayerJoinMessage((JoinMessage)message);
+          } else
+          if (message instanceof PlayerLeaveMessage) {
+            level.getPlayerLeaveMessage((PlayerLeaveMessage)message);
           }
         }
       }
