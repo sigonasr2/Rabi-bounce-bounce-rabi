@@ -34,7 +34,9 @@ import mygame.control.PlayableCharacter;
 import mygame.server.ServerMain.JoinMessage;
 import mygame.server.ServerMain.SyncLevelMessage;
 import mygame.server.Entity;
+import mygame.server.ServerMain;
 import mygame.server.ServerMain.PlayerActionMessage;
+import mygame.server.ServerMain.PlayerLeaveMessage;
 
 
 public class RunLevel extends BaseAppState 
@@ -50,10 +52,13 @@ public class RunLevel extends BaseAppState
     private List<Integer> players = new ArrayList<>();
     private Vector3f[] player_locations;
     public static List<PlayerActionMessage> queuedPlayerActionMessages = new ArrayList<>();
+    public static List<JoinMessage> queuedPlayerJoinMessages = new ArrayList<>();
+    public static List<PlayerLeaveMessage> queuedPlayerLeaveMessages = new ArrayList<>();
     public static List<SyncLevelMessage> queuedSyncLevelMessages = new ArrayList<>();
     public static Node world;
     Node entityNode;
     public static Node networkedPlayersNode;
+    float timer;
     
     public RunLevel(String levelName) {
         //System.out.println("In here. Initialize");
@@ -94,7 +99,7 @@ public class RunLevel extends BaseAppState
         //DirectionalLight sceneLight = (DirectionalLight)world.getLocalLightList().get(0);
         
         Node player =  (Node)assetManager.loadModel("Models/Oto/Oto.mesh.xml"); 
-        Node playerNode = new Node();
+        Node playerNode = new Node("Player");
         playerNode.attachChild(player);
         playerNode.addControl(new PlayableCharacter());
         
@@ -157,7 +162,7 @@ public class RunLevel extends BaseAppState
         reflectedScene.attachChild(TestLevel);
         reflectedScene.attachChild(playerNode);
         reflectedScene.attachChild(SkyFactory.createSky(assetManager,"Textures/Sky/Bright/BrightSky.dds",false));
-        
+
         FilterPostProcessor fpp = new FilterPostProcessor(assetManager);
         //viewPort.addProcessor(fpp);
         Vector3f lightDir = new Vector3f(-2.9f,-1.2f,-5.8f);
@@ -202,6 +207,8 @@ public class RunLevel extends BaseAppState
     protected void cleanup(Application app) {
         //TODO: clean up what you initialized in the initialize method,
         //e.g. remove all spatials from rootNode
+        //((Node)rootNode.getChild("Player")).removeControl(PlayableCharacter.class);
+        ((Node)rootNode.getChild("Reflected Scene")).detachAllChildren();
     }
 
     //onEnable()/onDisable() can be used for managing things that should
@@ -230,6 +237,30 @@ public class RunLevel extends BaseAppState
             createPlayers();
         }
         queuedSyncLevelMessages.clear();
+        for (JoinMessage msg : queuedPlayerJoinMessages) {
+            MakeNetworkPlayer(msg.getEntity().id,msg.getEntity().position); 
+            players.add(msg.getEntity().id);
+            createPlayers();   
+            System.out.println(msg);
+        }
+        queuedPlayerJoinMessages.clear();
+        for (PlayerLeaveMessage msg : queuedPlayerLeaveMessages) {
+            for (int i=0;i<networkedPlayersNode.getChildren().size();i++) {
+                Spatial s = networkedPlayersNode.getChildren().get(i);
+                if (s.getName().equalsIgnoreCase(Integer.toString(msg.getId()))) {
+                    System.out.println("Removed "+s);
+                    networkedPlayersNode.detachChild(s);
+                    players.remove((Integer)msg.getId());
+                    i--;
+                }
+            }
+        }
+        queuedPlayerLeaveMessages.clear();
+        /*timer+=tpf;
+        if (timer>5) {
+            main.getStateManager().detach(this);
+            this.setEnabled(false);
+        }*/
     }
 
     @Override
@@ -259,9 +290,7 @@ public class RunLevel extends BaseAppState
 
     public void getPlayerJoinMessage(JoinMessage playerJoinMessage) {
         JoinMessage msg = playerJoinMessage;
-        MakeNetworkPlayer(msg.getEntity().id,msg.getEntity().position); 
-        players.add(msg.getEntity().id);
-        createPlayers();
+        queuedPlayerJoinMessages.add(msg);
     }
 
     private void MakeNetworkPlayer(int id, Vector3f pos) {
@@ -288,6 +317,11 @@ public class RunLevel extends BaseAppState
         networkPlayer.setUserData("lastRotation", playerActionMessage.getRotation());
         networkPlayer.setUserData("lastCamDir", playerActionMessage.getCamera());
         networkPlayer.setUserData("lastCamLeftDir", playerActionMessage.getCameraLeft());
+    }
+
+    public void getPlayerLeaveMessage(PlayerLeaveMessage playerLeaveMessage) {
+        PlayerLeaveMessage msg = playerLeaveMessage;
+        queuedPlayerLeaveMessages.add(msg);
     }
 
 }

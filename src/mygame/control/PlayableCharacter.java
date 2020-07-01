@@ -25,6 +25,7 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
 import com.jme3.scene.control.Control;
 import java.io.IOException;
+import static mygame.Main.level;
 import static mygame.Main.main;
 import mygame.server.ServerMain.PlayerActionMessage;
 import mygame.server.ServerMain.PlayerPositionMessage;
@@ -60,34 +61,40 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
     @Override
     public void setSpatial(Spatial spatial) {
         super.setSpatial(spatial);
-        //control = spatial.getControl(BetterCharacterControl.class);
-        Node myNode = (Node)spatial;
-        
-        physics = new PhysicsControl(
-                0.1f,
-                -0.25f,
-                5f
-        );
-        myNode.addControl(physics);
-        
-        control = ((Node)spatial).getChild(0).getControl(AnimControl.class);
-        control.addListener(this);
-        channel = control.createChannel();
-        channel.setAnim("stand");
-        /*channel_lowerbody = control.createChannel();
-        channel_lowerbody.addBone("hip.right");
-        channel_lowerbody.addBone("hip.left");*/ //There is no strafing animation
-        
-        main.getInputManager().addMapping("WalkForward", new KeyTrigger(KeyInput.KEY_W));
-        main.getInputManager().addMapping("WalkBackward", new KeyTrigger(KeyInput.KEY_S));
-        main.getInputManager().addMapping("StrafeLeft", new KeyTrigger(KeyInput.KEY_A));
-        main.getInputManager().addMapping("StrafeRight", new KeyTrigger(KeyInput.KEY_D));
-        main.getInputManager().addMapping("Jump", new KeyTrigger(KeyInput.KEY_SPACE));
-        main.getInputManager().addListener(this, "WalkForward");
-        main.getInputManager().addListener(this, "WalkBackward");
-        main.getInputManager().addListener(this, "StrafeRight");
-        main.getInputManager().addListener(this, "StrafeLeft");
-        main.getInputManager().addListener(this, "Jump");
+        if (spatial!=null) {
+            //control = spatial.getControl(BetterCharacterControl.class);
+            Node myNode = (Node)spatial;
+
+            physics = new PhysicsControl(
+                    0.1f,
+                    -0.25f,
+                    5f
+            );
+            myNode.addControl(physics);
+
+            control = (((Node)spatial).getChild(0)).getControl(AnimControl.class);
+            //System.out.println(control.getAnimationNames());
+            control.addListener(this);
+            channel = control.createChannel();
+            channel.setAnim("stand");
+            channel.setLoopMode(LoopMode.Cycle);
+            /*channel_lowerbody = control.createChannel();
+            channel_lowerbody.addBone("hip.right");
+            channel_lowerbody.addBone("hip.left");*/ //There is no strafing animation
+
+            main.getInputManager().addMapping("WalkForward", new KeyTrigger(KeyInput.KEY_W));
+            main.getInputManager().addMapping("WalkBackward", new KeyTrigger(KeyInput.KEY_S));
+            main.getInputManager().addMapping("StrafeLeft", new KeyTrigger(KeyInput.KEY_A));
+            main.getInputManager().addMapping("StrafeRight", new KeyTrigger(KeyInput.KEY_D));
+            main.getInputManager().addMapping("Jump", new KeyTrigger(KeyInput.KEY_SPACE));
+            main.getInputManager().addListener(this, "WalkForward");
+            main.getInputManager().addListener(this, "WalkBackward");
+            main.getInputManager().addListener(this, "StrafeRight");
+            main.getInputManager().addListener(this, "StrafeLeft");
+            main.getInputManager().addListener(this, "Jump");
+        } else {
+            main.getInputManager().removeListener(this);
+        }
     }
 
     /** Implement your spatial's behaviour here.
@@ -216,6 +223,7 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
         switch (name) {
             case "Jump":{
                 if (isOnGround() || physics.airTime<=physics.walkOffTime) {
+                    //System.out.println("Jump");
                     physics.jump();
                     if (!(this instanceof NetworkPlayableCharacter)) { //Only send if this is the source client.
                         PlayerActionMessage action = new PlayerActionMessage(name,"",main.client.getId(),spatial.getLocalTranslation(),spatial.getLocalRotation(),main.getCamera().getDirection(),main.getCamera().getLeft());
