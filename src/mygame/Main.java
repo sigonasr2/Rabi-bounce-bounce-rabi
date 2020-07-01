@@ -68,7 +68,7 @@ public class Main extends SimpleApplication implements ClientStateListener{
     public void simpleInitApp() {
         flyCam.setEnabled(false);
         //flyCam.setMoveSpeed(50);
-        level = new RunLevel("TestLevel2");
+        level = new RunLevel("TestLevel");
         stateManager.attach(level);
     }
 
