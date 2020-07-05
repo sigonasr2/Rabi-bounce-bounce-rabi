@@ -52,7 +52,7 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
     AnimControl control;
     
     PhysicsControl physics;
-    Vector3f walkDirection;
+    Vector3f walkDirection = Vector3f.ZERO.clone();
     
     float lastActionPerformed = 0.0f;
     static final float FREECAMERATIME = 0.5f;
@@ -115,7 +115,15 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
         /*if (this instanceof NetworkPlayableCharacter) {
             System.out.println("1:"+getWalkDirection()+"Moving:"+moving+"/"+strafingLeft+"/"+strafingRight+"/"+walkingBackward+"/"+walkingForward);
         }*/
-        main.getCamera().setLocation(spatial.getLocalTranslation().add(-20,7f,0));
+        //main.getCamera().setLocation(spatial.getLocalTranslation().add(-20,7f,0));
+        if (physics.getHorizontalSpeed()!=0.0f) {
+            SmoothMoveWalk(walkDirection, tpf);
+            //Message msg = new PlayerPositionMessage(spatial.getLocalTranslation());
+            //main.client.send(msg);
+        } else {
+            channel.setAnim("stand");
+            channel.setLoopMode(LoopMode.DontLoop);
+        }
         if (moving) {
             if (!(this instanceof NetworkPlayableCharacter)) {
                 cameraTransition+=tpf*4;
@@ -129,22 +137,10 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
             
             moving=false;
             
-            if (this instanceof NetworkPlayableCharacter) {
-                walkDirection = getWalkDirection((Vector3f)spatial.getUserData("lastCamDir"),(Vector3f)spatial.getUserData("lastCamLeftDir"));
-            } else {
-                walkDirection = getWalkDirection(main.getCamera().getDirection(),main.getCamera().getLeft());
-            }
+            walkDirection = getWalkDirection(tpf);
             /*if (this instanceof NetworkPlayableCharacter) {
                 System.out.println(" 2:"+getWalkDirection()+"Moving:"+moving+"/"+strafingLeft+"/"+strafingRight+"/"+walkingBackward+"/"+walkingForward);
             }*/
-            if (moving) {
-                SmoothMoveWalk(walkDirection, tpf);
-                //Message msg = new PlayerPositionMessage(spatial.getLocalTranslation());
-                //main.client.send(msg);
-            } else {
-                channel.setAnim("stand");
-                channel.setLoopMode(LoopMode.DontLoop);
-            }
         } else {
             if (!(this instanceof NetworkPlayableCharacter)) {
                 //System.out.println(spatial.getControl(CustomChaseCamera.class).getHorizontalRotation()+","+(spatial.getControl(CustomChaseCamera.class).getHorizontalRotation()%(2*Math.PI)));
@@ -269,18 +265,18 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
     public void onAnimChange(AnimControl control, AnimChannel channel, String animName) {
     }
 
-    public Vector3f getWalkDirection(Vector3f camDir, Vector3f camLeftDir) {
-        camDir.y=0; camDir.normalizeLocal();
-        camLeftDir.y=0; camLeftDir.normalizeLocal();
-
-        Vector3f walkDirection = new Vector3f(0,0,0);
+    public Vector3f getWalkDirection(float tpf) {
         
         if (strafingLeft) {
-            walkDirection.addLocal(0,0,-1);
+            this.walkDirection.setZ(-1);
+            //physics.setHorizontalSpeed(-speed);
+            physics.accelerate(false, tpf);
             moving=true;
         }
         if (strafingRight) {
-            walkDirection.addLocal(0,0,1);
+            this.walkDirection.setZ(1);
+            //physics.setHorizontalSpeed(speed);
+            physics.accelerate(true, tpf);
             moving=true;
         }
 

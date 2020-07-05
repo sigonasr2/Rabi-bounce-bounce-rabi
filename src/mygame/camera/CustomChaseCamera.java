@@ -58,6 +58,6 @@ public class CustomChaseCamera extends ChaseCamera{
             }
         }
         distance = targetDistance;
-            System.out.println(targetDistance);
+        //System.out.println(targetDistance);
     }
 }
