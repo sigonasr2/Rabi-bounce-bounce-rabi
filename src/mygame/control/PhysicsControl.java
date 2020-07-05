@@ -12,6 +12,7 @@ import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.renderer.queue.RenderQueue.ShadowMode;
+import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.control.AbstractControl;
@@ -23,14 +24,22 @@ import static mygame.appstate.RunLevel.world;
 
 public class PhysicsControl extends AbstractControl implements Savable, Cloneable {
     
+    final static float FRICTION = 0.4f;
+    
     float jumpSpd = 0.1f;
     float vspd = 0.0f;
+    float hspd = 0.0f; //Determines movement along the Z axis.
     float gravity = -0.25f;
+    
+    float acceleration = 80f; //80 units/s acceleration.
+    float maxSpd = 10f; //Default max speed is 10.
     
     float modelHeight = 2.5f;
     
     float walkOffTime = 0.25f; //How long you can jump after becoming airborne.
     float airTime = 0.0f; //Amount of time in air.
+    
+    Geometry standingOn;
 
     public PhysicsControl(float jumpSpd, float gravity, float modelHeight){
         this.jumpSpd=jumpSpd;
@@ -62,8 +71,21 @@ public class PhysicsControl extends AbstractControl implements Savable, Cloneabl
         } else {
             vspd=0;
             airTime=0;
+            if (standingOn!=null && standingOn.getUserData("friction")!=null) {
+                if (hspd<0) {
+                    hspd=Math.min(hspd+(float)standingOn.getUserData("friction"),0);
+                } else {
+                    hspd=Math.max(hspd-(float)standingOn.getUserData("friction"),0);
+                }
+            } else {
+                if (hspd<0) {
+                    hspd=Math.min(hspd+FRICTION,0);
+                } else {
+                    hspd=Math.max(hspd-FRICTION,0);
+                }
+            }
         }
-        spatial.move(0,vspd,0);
+        spatial.move(0,vspd,hspd*tpf);
     }
 
     @Override
@@ -112,6 +134,52 @@ public class PhysicsControl extends AbstractControl implements Savable, Cloneabl
         return vspd;
     }
     
+    void addHorizontalSpeed(float spd) {
+        hspd += spd;
+    }
+    void setHorizontalSpeed(float spd) {
+        hspd = spd;
+    }
+    
+    void setAcceleration(float value) {
+        acceleration = value;
+    }
+    void setMaxSpd(float value) {
+        maxSpd = value;
+    }
+    
+    float getAcceleration() {
+        return acceleration;
+    }
+    float getMaxSpd() {
+        return maxSpd;
+    }
+    
+    /***
+     * 
+     * @param positive Use false if we are accelerating in the -Z direction. (Left). Use true to say we are accelerating to the right.
+     * @param tpf 
+     */
+    void accelerate(boolean right, float tpf) {
+        if (right) {
+            if (hspd+acceleration*tpf<maxSpd) {
+                hspd += acceleration*tpf;
+            } else {
+                hspd = maxSpd;
+            }
+        } else {
+            if (hspd-acceleration*tpf>-maxSpd) {
+                hspd -= acceleration*tpf;
+            } else {
+                hspd = -maxSpd;
+            }
+        }
+    }
+    
+    float getHorizontalSpeed() {
+        return hspd;
+    }
+    
     boolean isOnGround() {
         if (vspd>0) {
             //System.out.println(vspd);
@@ -137,6 +205,7 @@ public class PhysicsControl extends AbstractControl implements Savable, Cloneabl
                 //System.out.println(newResults.getClosestCollision());
                 if (newResults.getClosestCollision().getDistance()<=(modelHeight/2)+0.1-vspd) {
                     spatial.setLocalTranslation(newResults.getClosestCollision().getContactPoint());
+                    standingOn = newResults.getClosestCollision().getGeometry();
                     return true;
                 } else {
                     return false;
