@@ -8,6 +8,7 @@ import com.jme3.collision.CollisionResults;
 import com.jme3.export.JmeExporter;
 import com.jme3.export.JmeImporter;
 import com.jme3.export.Savable;
+import com.jme3.input.ChaseCamera;
 import com.jme3.input.KeyInput;
 import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.AnalogListener;
@@ -27,6 +28,7 @@ import com.jme3.scene.control.Control;
 import java.io.IOException;
 import static mygame.Main.level;
 import static mygame.Main.main;
+import mygame.camera.CustomChaseCamera;
 import mygame.server.ServerMain.PlayerActionMessage;
 import mygame.server.ServerMain.PlayerPositionMessage;
 import mygame.server.ServerMain.ServerMessage;
@@ -51,6 +53,11 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
     
     PhysicsControl physics;
     Vector3f walkDirection;
+    
+    float lastActionPerformed = 0.0f;
+    static final float FREECAMERATIME = 0.5f;
+    float cameraTransition = 0.0f;
+    float oldRotation = 0.0f;
             
     // empty serialization constructor
 
@@ -87,8 +94,8 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
             main.getInputManager().addMapping("StrafeLeft", new KeyTrigger(KeyInput.KEY_A));
             main.getInputManager().addMapping("StrafeRight", new KeyTrigger(KeyInput.KEY_D));
             main.getInputManager().addMapping("Jump", new KeyTrigger(KeyInput.KEY_SPACE));
-            main.getInputManager().addListener(this, "WalkForward");
-            main.getInputManager().addListener(this, "WalkBackward");
+            //main.getInputManager().addListener(this, "WalkForward");
+            //main.getInputManager().addListener(this, "WalkBackward");
             main.getInputManager().addListener(this, "StrafeRight");
             main.getInputManager().addListener(this, "StrafeLeft");
             main.getInputManager().addListener(this, "Jump");
@@ -108,7 +115,13 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
         /*if (this instanceof NetworkPlayableCharacter) {
             System.out.println("1:"+getWalkDirection()+"Moving:"+moving+"/"+strafingLeft+"/"+strafingRight+"/"+walkingBackward+"/"+walkingForward);
         }*/
+        main.getCamera().setLocation(spatial.getLocalTranslation().add(-20,7f,0));
         if (moving) {
+            if (!(this instanceof NetworkPlayableCharacter)) {
+                cameraTransition+=tpf*4;
+                spatial.getControl(CustomChaseCamera.class).setHorizontalRotation(FastMath.interpolateLinear(cameraTransition, (float)(oldRotation), (float)Math.PI));
+                lastActionPerformed = 0.0f;
+            }
             if (!channel.getAnimationName().equalsIgnoreCase("Walk")) {   
                 channel.setAnim("Walk");
                 channel.setLoopMode(LoopMode.Loop);
@@ -132,8 +145,16 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
                 channel.setAnim("stand");
                 channel.setLoopMode(LoopMode.DontLoop);
             }
+        } else {
+            if (!(this instanceof NetworkPlayableCharacter)) {
+                //System.out.println(spatial.getControl(CustomChaseCamera.class).getHorizontalRotation()+","+(spatial.getControl(CustomChaseCamera.class).getHorizontalRotation()%(2*Math.PI)));
+                oldRotation = spatial.getControl(CustomChaseCamera.class).getHorizontalRotation();
+                cameraTransition = 0.0f;
+            }
         }
-        //isOnGround();
+        if (!(this instanceof NetworkPlayableCharacter)) {
+            lastActionPerformed+=tpf;
+        }
     }
 
     private void SmoothMoveWalk(Vector3f walkDirection, float tpf) {
@@ -174,6 +195,7 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
 
     @Override
     public void onAction(String name, boolean isPressed, float tpf) {
+        lastActionPerformed = 0.0f;
         switch (name) {
             case "StrafeLeft":{
                 current_time = 0.0f;
@@ -195,7 +217,7 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
                     main.client.send(action);
                 }
             }break;
-            case "WalkBackward":{
+            /*case "WalkBackward":{
                 current_time = 0.0f;
                 prevRot = spatial.getLocalRotation(); 
                 walkingBackward = isPressed;
@@ -214,7 +236,7 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
                     PlayerActionMessage action = new PlayerActionMessage(name,Boolean.toString(isPressed),main.client.getId(),spatial.getLocalTranslation(),spatial.getLocalRotation(),main.getCamera().getDirection(),main.getCamera().getLeft());
                     main.client.send(action);
                 }
-            }break;
+            }break;*/
         }
     }
 
@@ -254,22 +276,22 @@ public class PlayableCharacter extends AbstractControl implements Savable, Clone
         Vector3f walkDirection = new Vector3f(0,0,0);
         
         if (strafingLeft) {
-            walkDirection.addLocal(camLeftDir);
+            walkDirection.addLocal(0,0,-1);
             moving=true;
         }
         if (strafingRight) {
-            walkDirection.addLocal(camLeftDir.negate());
+            walkDirection.addLocal(0,0,1);
             moving=true;
         }
 
-        if (walkingForward) {
+        /*if (walkingForward) {
             walkDirection.addLocal(camDir);
             moving=true;
         }  
         if (walkingBackward) {
             walkDirection.addLocal(camDir.negate());
             moving=true;
-        }  
+        } */ 
         return walkDirection;
     }
 }
