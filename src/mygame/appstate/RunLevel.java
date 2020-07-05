@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import static mygame.Main.main;
+import mygame.camera.CustomChaseCamera;
 import mygame.control.NetworkPlayableCharacter;
 import mygame.control.PhysicsControl;
 import mygame.control.PlayableCharacter;
@@ -134,8 +135,11 @@ public class RunLevel extends BaseAppState
         
         //System.out.println("In here.,");
         
-        ChaseCamera chaseCam = new ChaseCamera(this.app.getCamera(), player, inputManager);
+        CustomChaseCamera chaseCam = new CustomChaseCamera(this.app.getCamera(), player, inputManager);
         chaseCam.setLookAtOffset(new Vector3f(0,2.5f,0));
+        chaseCam.setDefaultHorizontalRotation((float)Math.PI);
+        chaseCam.setSmoothMotion(false);
+        chaseCam.setTrailingEnabled(false);
         //this.app.getCamera().setFrustumPerspective(this.app.getCamera().getFr, aspect, near, far);
         //this.app.getCamera().setFrustumPerspective(90, 16f/9, 0, 2000f);
         //float fov = 50;
